@@ -146,30 +146,31 @@ int main(int argc, const char * argv[]) {
             toggle = 0;
         }
     }
-    
-    int i;
-    for(i=0; i < n; i++) {
-        // Get Random name from array, check status,  mark corresponding status element, build string
-        int toggle = 1;    // when toggle on, we attempt to select names
-        while(toggle) {
-            r = rand() % 10;
-            if (nameStatus[r] == 1) {
-                nameStatus[r] = 0;
-                rooms[i].name = names[r];
-                toggle = 0;
+    {
+        int i;
+        for(i=0; i < n; i++) {
+            // Get Random name from array, check status,  mark corresponding status element, build string
+            int toggle = 1;    // when toggle on, we attempt to select names
+            while(toggle) {
+                r = rand() % 10;
+                if (nameStatus[r] == 1) {
+                    nameStatus[r] = 0;
+                    rooms[i].name = names[r];
+                    toggle = 0;
+                }
             }
+            // assign start, end, and mid room values
+            if (i == rStart) {
+                rooms[i].type = 0;
+            } else if (i == rEnd) {
+                rooms[i].type = 1;
+            } else {
+                rooms[i].type = 2;
+            }
+            
+            // initialize numOutbound
+            rooms[i].numOutboundConnections = 0;
         }
-        // assign start, end, and mid room values
-        if (i == rStart) {
-            rooms[i].type = 0;
-        } else if (i == rEnd) {
-            rooms[i].type = 1;
-        } else {
-            rooms[i].type = 2;
-        }
-        
-        // initialize numOutbound
-        rooms[i].numOutboundConnections = 0;
     }
     
     while (!isGraphFull(rooms, n)) {
@@ -192,8 +193,8 @@ int main(int argc, const char * argv[]) {
     
     memset(path,0,strlen(path));
     sprintf(path + strlen(path), "%s", dirPath);
-    
-    for (int i=0; i < n; i++) {
+    int i;
+    for (i=0; i < n; i++) {
         
         // Path
         memset(path,0,strlen(path));
