@@ -12,41 +12,9 @@
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 
-void* writeTime() {
-    // lock the mutex
-    pthread_mutex_lock(&mutex);
-    
-    // Path
-    int file_descr = open("currentTime.txt", O_CREAT | O_WRONLY | O_TRUNC, 0600);
-    
-    // catch error
-    if (file_descr < 0) {
-        fprintf(stderr, "Couldn't open %s\n", "currentTime.txt");
-        perror("Error in main()");
-        exit(1);
-    }
-    
-    char timestamp[255];
-    memset(timestamp,0,strlen(timestamp));
-    
-    // get raw and local time
-    time_t rawtime;
-    struct tm *info;
-    time(&rawtime);
-    info = localtime( &rawtime );
-    
-    //1:03pm, Tuesday, September 13, 2016
-    strftime(timestamp, 255,"  %I:%M%p, %A, %B, %d, %Y", info);
-    ssize_t nwritten;
-    nwritten = write(file_descr, timestamp, strlen(timestamp) * sizeof(char));
-    
-    // unlock mutex
-    pthread_mutex_unlock(&mutex);
-    return 0;
-}
+void* writeTime(); 
 
 int main(int argc, const char * argv[]) {
-
     // declare time thread
     pthread_t timeThread;
     // lock mutex
@@ -57,8 +25,8 @@ int main(int argc, const char * argv[]) {
     // read in game room files
     // use stat() on directories and use the one with most recent st_mtime component
     int newestDirTime = -1; // Modified timestamp of newest subdir examined
-    char targetDirPrefix[32] = "youndani.rooms."; // Prefix we're looking for
-    char newestDirName[256]; // Holds the name of the newest dir that contains prefix
+    char targetDirPrefix[16] = "youndani.rooms."; // Prefix we're looking for
+    char newestDirName[32]; // Holds the name of the newest dir that contains prefix
     memset(newestDirName, '\0', sizeof(newestDirName));
     
     DIR* dirToCheck; // Holds the directory we're starting in
@@ -85,14 +53,13 @@ int main(int argc, const char * argv[]) {
             }
         }
     }
-    
     // Close the directory we opened
     closedir(dirToCheck);
     
     //declare file reading variables
     DIR *d;
     struct dirent *dir;
-    char filepath[256];
+    char filepath[64] = {0};
     int file_descr;
     
     d = opendir(newestDirName);
@@ -115,6 +82,7 @@ int main(int argc, const char * argv[]) {
         }
     }
     
+    // Close the directory we opened
     // initialize game variables
     int stepCount = 0;
     char nextRoom[30];
@@ -145,6 +113,7 @@ int main(int argc, const char * argv[]) {
                         }
                     } else { // next try ignoring the first character (indicating start or end)
                         char subbuff[30] = {0};
+			memset(subbuff, '\0', 30);
                             memcpy( subbuff, &dir->d_name[1], strlen(nextRoom));
                             subbuff[29] = '\0';
                             
@@ -165,36 +134,34 @@ int main(int argc, const char * argv[]) {
                 }
             }
         }
-        
     // read room - initalize outside variables
         int lineCount = 0;
         char *lines[8] = {0};
         { // intitialize local variables
             char *line = {0};
             char readBuffer[256] = {0};
-            char *savePtr1;
-            char buffTemp[256] = {0};
+	    memset(readBuffer, '\0', 256);
+            char *savePtr1 = {0};
             ssize_t nread;
-
+		
             nread = read(file_descr, readBuffer, sizeof(readBuffer));
-            strcpy(buffTemp,readBuffer);
-            line = strtok_r(buffTemp, "\n", &savePtr1);
+    
+	    line = strtok_r(readBuffer, "\n", &savePtr1);
             // read line by line into lines
             do {
                         lines[lineCount] = line;
                         lineCount++;
-
             } while ((line = strtok_r(NULL, "\n", &savePtr1)) != NULL);
         }
-    
+     
         // save name
-        char name[30];
+	char *name;
         {
             // locals
-            char tempLine[30] = {0};
+            char *tempLine;
             char *savePtr2 = {0};
-            strcpy(tempLine, lines[0]);
-            char *p = strtok_r(tempLine, " ", &savePtr2);
+            tempLine = lines[0];
+	    char *p = strtok_r(tempLine, " ", &savePtr2);
             char *arr[3] = {0};
             int c = 0;
 
@@ -203,8 +170,10 @@ int main(int argc, const char * argv[]) {
                 arr[c++] = p;
                 p = strtok_r(NULL, " ", &savePtr2);
             }
-            strcpy(name,arr[2]);
-        }
+            
+        name = arr[2];
+	
+	}
         // print victory message and path, exit(0)
         if (atEndRoom) {
             printf("YOU HAVE FOUND THE END ROOM. CONGRATULATIONS!\nYOU TOOK %d STEPS. YOUR PATH TO VICTORY WAS:\n", stepCount);
@@ -215,15 +184,16 @@ int main(int argc, const char * argv[]) {
             exit(0);
         }
     
-        // save connections variables
-        char connectionArr[6][25] = {0};
+    
+        char *connectionArr[25];
+	memset(connectionArr, 0, sizeof(connectionArr));
         {
             char *savePtr3 = {0};
-            char tempLine[50] = {0};
+            char *tempLine;
             int i;
             for (i= 1; i < (lineCount-1); i++) {
-                strcpy(tempLine, lines[i]);
-                char *p = strtok_r(tempLine, " ", &savePtr3);
+                tempLine = lines[i];
+		char *p = strtok_r(tempLine, " ", &savePtr3);
                 char *arr[3] = {0};
                 int c = 0;
         
@@ -232,8 +202,8 @@ int main(int argc, const char * argv[]) {
                     arr[c++] = p;
                     p = strtok_r(NULL, " ", &savePtr3);
                 }
-                strcpy(connectionArr[i-1],arr[2]);
-            }
+		connectionArr[i-1] = arr[2];	
+	   }
         }
     
     
@@ -245,6 +215,7 @@ int main(int argc, const char * argv[]) {
     
         // Output Loop
     
+    // Close the directory we opened
         int printToggle = 1;
         while (printToggle) { // this loop repeats whenever user chooses a nonexistant room
             {
@@ -262,6 +233,7 @@ int main(int argc, const char * argv[]) {
             }
             // get input
             char input[64];
+	    memset(input, '\0', 64);
             scanf("%s", input);
             
             int timeToggle = 1;
@@ -316,5 +288,38 @@ int main(int argc, const char * argv[]) {
             }
         }
     }
+    return 0;
+}
+
+void* writeTime() {
+    // lock the mutex
+    pthread_mutex_lock(&mutex);
+    
+    // Path
+    int file_descr = open("currentTime.txt", O_CREAT | O_WRONLY | O_TRUNC, 0600);
+    
+    // catch error
+    if (file_descr < 0) {
+        fprintf(stderr, "Couldn't open %s\n", "currentTime.txt");
+        perror("Error in main()");
+        exit(1);
+    }
+    
+    char timestamp[64];
+    memset(timestamp,'\0',64);
+    
+    // get raw and local time
+    time_t rawtime;
+    struct tm *info;
+    time(&rawtime);
+    info = localtime( &rawtime );
+    
+    //1:03pm, Tuesday, September 13, 2016
+    strftime(timestamp, 64,"\n  %I:%M%p, %A, %B, %d, %Y", info);
+    ssize_t nwritten;
+    nwritten = write(file_descr, timestamp, strlen(timestamp) * sizeof(char));
+    
+    // unlock mutex
+    pthread_mutex_unlock(&mutex);
     return 0;
 }
